@@ -1,5 +1,8 @@
-import { NextResponse } from "next/server";
-import { apiErrorResponse, requireApiOwner } from "@/lib/api-auth";
+import {
+  apiErrorResponseWithCookies,
+  jsonWithAuthCookies,
+  requireApiOwnerFromRequest
+} from "@/lib/api-auth";
 import { brandSchema } from "@/lib/validation";
 
 function nullableText(value: unknown) {
@@ -10,13 +13,25 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ brandId: string }> }
 ) {
+  let cookiesToSet: Awaited<
+    ReturnType<typeof requireApiOwnerFromRequest>
+  >["cookiesToSet"] = [];
+  const context = "PATCH /api/owner/brands/[brandId]";
+
   try {
-    const { admin } = await requireApiOwner();
+    const apiContext = await requireApiOwnerFromRequest(request, context);
+    const { admin } = apiContext;
+    cookiesToSet = apiContext.cookiesToSet;
     const { brandId } = await params;
     const parsed = brandSchema.safeParse(await request.json());
 
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid brand payload." }, { status: 400 });
+      return jsonWithAuthCookies(
+        { error: "Invalid brand payload." },
+        { status: 400 },
+        cookiesToSet,
+        context
+      );
     }
 
     const { brand_name, ...fields } = parsed.data;
@@ -32,18 +47,25 @@ export async function PATCH(
       throw error;
     }
 
-    return NextResponse.json({ ok: true });
+    return jsonWithAuthCookies({ ok: true }, undefined, cookiesToSet, context);
   } catch (error) {
-    return apiErrorResponse(error);
+    return apiErrorResponseWithCookies(error, cookiesToSet, context);
   }
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ brandId: string }> }
 ) {
+  let cookiesToSet: Awaited<
+    ReturnType<typeof requireApiOwnerFromRequest>
+  >["cookiesToSet"] = [];
+  const context = "DELETE /api/owner/brands/[brandId]";
+
   try {
-    const { admin } = await requireApiOwner();
+    const apiContext = await requireApiOwnerFromRequest(request, context);
+    const { admin } = apiContext;
+    cookiesToSet = apiContext.cookiesToSet;
     const { brandId } = await params;
     const { error } = await admin.from("brands").delete().eq("id", brandId);
 
@@ -51,8 +73,8 @@ export async function DELETE(
       throw error;
     }
 
-    return NextResponse.json({ ok: true });
+    return jsonWithAuthCookies({ ok: true }, undefined, cookiesToSet, context);
   } catch (error) {
-    return apiErrorResponse(error);
+    return apiErrorResponseWithCookies(error, cookiesToSet, context);
   }
 }

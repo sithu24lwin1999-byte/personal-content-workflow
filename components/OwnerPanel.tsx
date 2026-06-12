@@ -113,9 +113,11 @@ export function OwnerPanel() {
     setError("");
     const response = await fetch(url, {
       method,
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
     });
+    console.log(`${method} ${url} API response status: ${response.status}`);
     const data = await response.json();
 
     if (!response.ok) {

@@ -1,18 +1,33 @@
-import { NextResponse } from "next/server";
-import { apiErrorResponse, requireApiOwner } from "@/lib/api-auth";
+import {
+  apiErrorResponseWithCookies,
+  jsonWithAuthCookies,
+  requireApiOwnerFromRequest
+} from "@/lib/api-auth";
 import { updateUserSchema } from "@/lib/validation";
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ userId: string }> }
 ) {
+  let cookiesToSet: Awaited<
+    ReturnType<typeof requireApiOwnerFromRequest>
+  >["cookiesToSet"] = [];
+  const context = "PATCH /api/owner/users/[userId]";
+
   try {
-    const { admin } = await requireApiOwner();
+    const apiContext = await requireApiOwnerFromRequest(request, context);
+    const { admin } = apiContext;
+    cookiesToSet = apiContext.cookiesToSet;
     const { userId } = await params;
     const parsed = updateUserSchema.safeParse(await request.json());
 
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid user update." }, { status: 400 });
+      return jsonWithAuthCookies(
+        { error: "Invalid user update." },
+        { status: 400 },
+        cookiesToSet,
+        context
+      );
     }
 
     const { error } = await admin
@@ -24,8 +39,8 @@ export async function PATCH(
       throw error;
     }
 
-    return NextResponse.json({ ok: true });
+    return jsonWithAuthCookies({ ok: true }, undefined, cookiesToSet, context);
   } catch (error) {
-    return apiErrorResponse(error);
+    return apiErrorResponseWithCookies(error, cookiesToSet, context);
   }
 }

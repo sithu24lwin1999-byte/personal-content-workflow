@@ -3,6 +3,7 @@ node_modules
 .vercel
 .env*.local
 npm-debug.log*
+.DS_Store
 .env*
 !.env.example
 

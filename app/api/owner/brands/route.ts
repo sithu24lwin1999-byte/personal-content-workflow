@@ -1,5 +1,8 @@
-import { NextResponse } from "next/server";
-import { apiErrorResponse, requireApiOwner } from "@/lib/api-auth";
+import {
+  apiErrorResponseWithCookies,
+  jsonWithAuthCookies,
+  requireApiOwnerFromRequest
+} from "@/lib/api-auth";
 import { brandSchema } from "@/lib/validation";
 
 function nullableText(value: unknown) {
@@ -7,12 +10,24 @@ function nullableText(value: unknown) {
 }
 
 export async function POST(request: Request) {
+  let cookiesToSet: Awaited<
+    ReturnType<typeof requireApiOwnerFromRequest>
+  >["cookiesToSet"] = [];
+  const context = "POST /api/owner/brands";
+
   try {
-    const { admin, profile } = await requireApiOwner();
+    const apiContext = await requireApiOwnerFromRequest(request, context);
+    const { admin, profile } = apiContext;
+    cookiesToSet = apiContext.cookiesToSet;
     const parsed = brandSchema.safeParse(await request.json());
 
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid brand payload." }, { status: 400 });
+      return jsonWithAuthCookies(
+        { error: "Invalid brand payload." },
+        { status: 400 },
+        cookiesToSet,
+        context
+      );
     }
 
     const { brand_name, ...fields } = parsed.data;
@@ -29,8 +44,8 @@ export async function POST(request: Request) {
       throw error;
     }
 
-    return NextResponse.json({ ok: true });
+    return jsonWithAuthCookies({ ok: true }, undefined, cookiesToSet, context);
   } catch (error) {
-    return apiErrorResponse(error);
+    return apiErrorResponseWithCookies(error, cookiesToSet, context);
   }
 }

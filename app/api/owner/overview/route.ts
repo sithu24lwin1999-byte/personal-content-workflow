@@ -1,9 +1,19 @@
-import { NextResponse } from "next/server";
-import { apiErrorResponse, requireApiOwner } from "@/lib/api-auth";
+import {
+  apiErrorResponseWithCookies,
+  jsonWithAuthCookies,
+  requireApiOwnerFromRequest
+} from "@/lib/api-auth";
 
-export async function GET() {
+export async function GET(request: Request) {
+  let cookiesToSet: Awaited<
+    ReturnType<typeof requireApiOwnerFromRequest>
+  >["cookiesToSet"] = [];
+  const context = "GET /api/owner/overview";
+
   try {
-    const { admin } = await requireApiOwner();
+    const apiContext = await requireApiOwnerFromRequest(request, context);
+    const { admin } = apiContext;
+    cookiesToSet = apiContext.cookiesToSet;
     const [users, permissions, brands, settings, usageLogs] = await Promise.all([
       admin.from("profiles").select("*").order("created_at", { ascending: false }),
       admin.from("user_permissions").select("*"),
@@ -24,24 +34,29 @@ export async function GET() {
 
     const rawSettings = settings.data;
 
-    return NextResponse.json({
-      users: users.data,
-      permissions: permissions.data,
-      brands: brands.data,
-      settings: rawSettings
-        ? {
-            model_name: rawSettings.model_name,
-            temperature: rawSettings.temperature,
-            max_output_tokens: rawSettings.max_output_tokens,
-            content_system_prompt: rawSettings.content_system_prompt,
-            qc_system_prompt: rawSettings.qc_system_prompt,
-            daily_usage_limit_default: rawSettings.daily_usage_limit_default,
-            has_api_key: Boolean(rawSettings.api_key_encrypted)
-          }
-        : null,
-      usageLogs: usageLogs.data
-    });
+    return jsonWithAuthCookies(
+      {
+        users: users.data,
+        permissions: permissions.data,
+        brands: brands.data,
+        settings: rawSettings
+          ? {
+              model_name: rawSettings.model_name,
+              temperature: rawSettings.temperature,
+              max_output_tokens: rawSettings.max_output_tokens,
+              content_system_prompt: rawSettings.content_system_prompt,
+              qc_system_prompt: rawSettings.qc_system_prompt,
+              daily_usage_limit_default: rawSettings.daily_usage_limit_default,
+              has_api_key: Boolean(rawSettings.api_key_encrypted)
+            }
+          : null,
+        usageLogs: usageLogs.data
+      },
+      undefined,
+      cookiesToSet,
+      context
+    );
   } catch (error) {
-    return apiErrorResponse(error);
+    return apiErrorResponseWithCookies(error, cookiesToSet, context);
   }
 }

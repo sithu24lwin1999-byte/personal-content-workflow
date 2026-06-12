@@ -1,16 +1,28 @@
-import { NextResponse } from "next/server";
-import { apiErrorResponse, requireApiOwner } from "@/lib/api-auth";
+import {
+  apiErrorResponseWithCookies,
+  jsonWithAuthCookies,
+  requireApiOwnerFromRequest
+} from "@/lib/api-auth";
 import { permissionSchema } from "@/lib/validation";
 
 export async function PUT(request: Request) {
+  let cookiesToSet: Awaited<
+    ReturnType<typeof requireApiOwnerFromRequest>
+  >["cookiesToSet"] = [];
+  const context = "PUT /api/owner/permissions";
+
   try {
-    const { admin } = await requireApiOwner();
+    const apiContext = await requireApiOwnerFromRequest(request, context);
+    const { admin } = apiContext;
+    cookiesToSet = apiContext.cookiesToSet;
     const parsed = permissionSchema.safeParse(await request.json());
 
     if (!parsed.success) {
-      return NextResponse.json(
+      return jsonWithAuthCookies(
         { error: "Invalid permission payload." },
-        { status: 400 }
+        { status: 400 },
+        cookiesToSet,
+        context
       );
     }
 
@@ -29,8 +41,8 @@ export async function PUT(request: Request) {
       throw error;
     }
 
-    return NextResponse.json({ ok: true });
+    return jsonWithAuthCookies({ ok: true }, undefined, cookiesToSet, context);
   } catch (error) {
-    return apiErrorResponse(error);
+    return apiErrorResponseWithCookies(error, cookiesToSet, context);
   }
 }
