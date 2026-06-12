@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getAppUrl } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { emailSchema } from "@/lib/validation";
 
@@ -10,7 +11,7 @@ export async function POST(request: Request) {
   }
 
   const supabase = await createSupabaseServerClient();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = getAppUrl();
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
     redirectTo: `${appUrl}/update-password`
   });

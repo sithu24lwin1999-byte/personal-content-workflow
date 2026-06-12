@@ -26,17 +26,21 @@ Required for the app:
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+# Optional fallback if you use Supabase's publishable-key naming:
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 APP_ENCRYPTION_KEY=your-long-random-secret
 ```
 
-The code expects `NEXT_PUBLIC_SUPABASE_ANON_KEY`, not `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+The code prefers `NEXT_PUBLIC_SUPABASE_ANON_KEY` and also supports `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` as a fallback.
 
-Current Supabase dashboards may label this as an anon key or publishable key. Use that key value, but keep the environment variable name exactly:
+Current Supabase dashboards may label this as an anon key or publishable key. Recommended setup:
 
 ```bash
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-publishable-or-anon-key
 ```
+
+If you already configured only `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in Vercel, the app will now read that too.
 
 Optional local reference:
 
@@ -74,6 +78,7 @@ Keep these server-only:
 2. Open Project Settings > API.
 3. Copy the Project URL into `NEXT_PUBLIC_SUPABASE_URL`.
 4. Copy the anon public key, also sometimes labeled publishable key, into `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+   If you prefer Supabase's newer naming, put it in `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 5. Copy the service_role key into `SUPABASE_SERVICE_ROLE_KEY`.
 6. Open Authentication > Providers > Email.
 7. Enable Email/password authentication.

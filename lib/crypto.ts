@@ -1,11 +1,15 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "crypto";
+import { getMissingGeminiEncryptionEnv, logMissingEnv } from "@/lib/env";
 
 function getKey() {
-  const rawKey = process.env.APP_ENCRYPTION_KEY;
+  const missingNames = getMissingGeminiEncryptionEnv();
 
-  if (!rawKey) {
-    throw new Error("Missing APP_ENCRYPTION_KEY.");
+  if (missingNames.length > 0) {
+    logMissingEnv("Gemini API key encryption", missingNames);
+    throw new Error(`Missing environment variables: ${missingNames.join(", ")}`);
   }
+
+  const rawKey = process.env.APP_ENCRYPTION_KEY!;
 
   return createHash("sha256").update(rawKey).digest();
 }

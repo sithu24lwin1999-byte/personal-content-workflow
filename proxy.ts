@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { getMissingSupabasePublicEnv, getSupabasePublicConfig, logMissingEnv } from "@/lib/env";
 
 const protectedPrefixes = ["/dashboard", "/owner"];
 
@@ -13,19 +14,20 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  if (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  ) {
+  const missingEnv = getMissingSupabasePublicEnv();
+
+  if (missingEnv.length > 0) {
+    logMissingEnv("proxy", missingEnv);
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("error", "missing_supabase_env");
     return NextResponse.redirect(redirectUrl);
   }
 
+  const { supabaseUrl, supabaseKey } = getSupabasePublicConfig("proxy");
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseKey,
     {
       cookies: {
         getAll() {
