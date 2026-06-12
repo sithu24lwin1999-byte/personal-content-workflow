@@ -1,0 +1,54 @@
+import { NextResponse } from "next/server";
+import { apiErrorResponse, requireApiOwner } from "@/lib/api-auth";
+import { FEATURE_PERMISSIONS } from "@/lib/types";
+import { createUserSchema } from "@/lib/validation";
+
+export async function POST(request: Request) {
+  try {
+    const { admin } = await requireApiOwner();
+    const parsed = createUserSchema.safeParse(await request.json());
+
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid user payload." }, { status: 400 });
+    }
+
+    const { data, error } = await admin.auth.admin.createUser({
+      email: parsed.data.email,
+      password: parsed.data.password,
+      email_confirm: true,
+      user_metadata: { full_name: parsed.data.full_name || "" }
+    });
+
+    if (error || !data.user) {
+      throw error || new Error("Could not create user.");
+    }
+
+    const { error: profileError } = await admin.from("profiles").insert({
+      id: data.user.id,
+      email: parsed.data.email,
+      full_name: parsed.data.full_name || null,
+      role: parsed.data.role,
+      daily_usage_limit: parsed.data.daily_usage_limit
+    });
+
+    if (profileError) {
+      throw profileError;
+    }
+
+    const { error: permissionError } = await admin.from("user_permissions").insert(
+      FEATURE_PERMISSIONS.map((permission) => ({
+        user_id: data.user.id,
+        permission,
+        enabled: parsed.data.role === "owner"
+      }))
+    );
+
+    if (permissionError) {
+      throw permissionError;
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return apiErrorResponse(error);
+  }
+}

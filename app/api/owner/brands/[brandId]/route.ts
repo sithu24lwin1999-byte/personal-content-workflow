@@ -1,0 +1,58 @@
+import { NextResponse } from "next/server";
+import { apiErrorResponse, requireApiOwner } from "@/lib/api-auth";
+import { brandSchema } from "@/lib/validation";
+
+function nullableText(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ brandId: string }> }
+) {
+  try {
+    const { admin } = await requireApiOwner();
+    const { brandId } = await params;
+    const parsed = brandSchema.safeParse(await request.json());
+
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid brand payload." }, { status: 400 });
+    }
+
+    const { brand_name, ...fields } = parsed.data;
+    const payload = Object.fromEntries(
+      Object.entries(fields).map(([key, value]) => [key, nullableText(value)])
+    );
+    const { error } = await admin
+      .from("brands")
+      .update({ ...payload, brand_name: brand_name.trim() })
+      .eq("id", brandId);
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return apiErrorResponse(error);
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ brandId: string }> }
+) {
+  try {
+    const { admin } = await requireApiOwner();
+    const { brandId } = await params;
+    const { error } = await admin.from("brands").delete().eq("id", brandId);
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return apiErrorResponse(error);
+  }
+}
